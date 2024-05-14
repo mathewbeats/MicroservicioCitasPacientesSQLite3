@@ -41,6 +41,27 @@ namespace CitasMedicas.Controllers
         }
 
 
+        [HttpGet("{id:int}", Name = "CitasId")]
+        public async Task<ActionResult<CitasMedico>>GetCitasId(int id)
+        {
+
+            var citas = await _SqlRepository.GetCitaMedicaById(id);
+
+            if(citas == null  || citas.CitaId == 0)
+            {
+                return NotFound();
+            }
+
+            var citasIdDto = citas.ToDto();
+
+            return Ok(citasIdDto);
+
+        }
+
+
+       
+
+
 
     }
 }

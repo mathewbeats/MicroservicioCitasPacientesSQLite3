@@ -17,13 +17,43 @@ namespace CitasMedicas.Repository
 
         public async Task<CitasMedico> CrearCitaMedico(CitasMedico c)
         {
-            throw new NotImplementedException();
+            using (var connection = new SqliteConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = @"
+            INSERT INTO CitasMedico (PacienteId, DoctorId, FechaHoraInicio, FechaHoraFin, Estado, Comentarios)
+            VALUES (@pacienteId, @doctorId, @fechaHoraInicio, @fechaHoraFin, @estado, @comentarios)";
+
+                command.Parameters.AddWithValue("@pacienteId", c.PacienteId);
+                command.Parameters.AddWithValue("@doctorId", c.DoctorId);
+                command.Parameters.AddWithValue("@fechaHoraInicio", c.FechaHoraInicio);
+                command.Parameters.AddWithValue("@fechaHoraFin", c.FechaHoraFin);
+                command.Parameters.AddWithValue("@estado", c.Estado);
+                command.Parameters.AddWithValue("@comentarios", c.Comentarios ?? (object)DBNull.Value);
+
+                await command.ExecuteNonQueryAsync();
+                //c.CitaId = (int)connection;
+                return c;
+            }
         }
 
-        public Task<bool> DeleteCitaMedicaById(int id)
+
+        public async Task<bool> DeleteCitaMedicaById(int id)
         {
-            throw new NotImplementedException();
+            using (var connection = new SqliteConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = @"
+            DELETE FROM CitasMedico WHERE CitaId = @citaId";
+                command.Parameters.AddWithValue("@citaId", id);
+
+                var result = await command.ExecuteNonQueryAsync();
+                return result > 0;
+            }
         }
+
 
         public async Task<IEnumerable<CitasMedico>> GetAllCitas()
         {
@@ -69,19 +99,113 @@ namespace CitasMedicas.Repository
             return citasMedico;
         }
 
-        public Task<CitasMedico> GetCitaMedicaById(int id)
+        public async Task<CitasMedico> GetCitaMedicaById(int id)
         {
-            throw new NotImplementedException();
+            using (var connection = new SqliteConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+
+                using (var command = connection.CreateCommand())
+                {
+                    var sql = @"SELECT CitaId, PacienteId, DoctorId, FechaHoraInicio, FechaHoraFin, Estado, Comentarios 
+                        FROM CitasMedico 
+                        WHERE CitaId = @CitaId";
+
+                    command.CommandText = sql;
+                    command.Parameters.AddWithValue("@CitaId", id);
+
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            var cita = new CitasMedico
+                            (
+                                citaId: reader.GetInt32(reader.GetOrdinal("CitaId")),
+                                pacienteId: reader.GetInt32(reader.GetOrdinal("PacienteId")),
+                                doctorId: reader.GetInt32(reader.GetOrdinal("DoctorId")),
+                                fechaHoraInicio: reader.GetDateTime(reader.GetOrdinal("FechaHoraInicio")),
+                                fechaHoraFin: reader.GetDateTime(reader.GetOrdinal("FechaHoraFin")),
+                                estado: reader.GetString(reader.GetOrdinal("Estado")),
+                                comentarios: reader.IsDBNull(reader.GetOrdinal("Comentarios")) ? null : reader.GetString(reader.GetOrdinal("Comentarios"))
+                            );
+                            return cita;
+                        }
+                    }
+                }
+            }
+            return null; // Retorna null si no se encuentra la cita
         }
 
-        public Task<CitasMedico?> GetCitaMedicaByName(string name)
+
+        public async Task<CitasMedico?> GetCitaMedicaByName(string name)
         {
-            throw new NotImplementedException();
+            using (var connection = new SqliteConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                var command = connection.CreateCommand();
+                command.CommandText = @"
+            SELECT * FROM CitasMedico
+            WHERE PacienteNombre = @name";
+                command.Parameters.AddWithValue("@name", name);
+
+                using (var reader = await command.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        return new CitasMedico(
+                            citaId: reader.GetInt32(reader.GetOrdinal("CitaId")),
+                            pacienteId: reader.GetInt32(reader.GetOrdinal("PacienteId")),
+                            doctorId: reader.GetInt32(reader.GetOrdinal("DoctorId")),
+                            fechaHoraInicio: reader.GetDateTime(reader.GetOrdinal("FechaHoraInicio")),
+                            fechaHoraFin: reader.GetDateTime(reader.GetOrdinal("FechaHoraFin")),
+                            estado: reader.GetString(reader.GetOrdinal("Estado")),
+                            comentarios: reader.IsDBNull(reader.GetOrdinal("Comentarios")) ? null : reader.GetString(reader.GetOrdinal("Comentarios"))
+                        );
+                    }
+                }
+            }
+            return null;
         }
 
-        public Task<CitasMedico> UpdateCitasMedico(CitasMedico c)
+
+        public async Task<CitasMedico> UpdateCitasMedico(CitasMedico c)
         {
-            throw new NotImplementedException();
+            using (var connection = new SqliteConnection(_connectionString))
+            {
+
+                await connection.OpenAsync();
+
+
+                using (var command = connection.CreateCommand())
+                {
+
+                    command.CommandText = @"
+                UPDATE CitasMedico
+                SET
+                PacienteId = @pacienteId,
+                DoctorId = @doctorId,
+                FechaHoraInicio = @fechaHoraInicio,
+                FechaHoraFin = @fechaHoraFin,
+                Estado = @estado,
+                Comentarios = @comentarios
+                WHERE CitaId = @citaId";
+
+
+                    command.Parameters.AddWithValue("@pacienteId", c.PacienteId);
+                    command.Parameters.AddWithValue("@doctorId", c.DoctorId);
+                    command.Parameters.AddWithValue("@fechaHoraInicio", c.FechaHoraInicio);
+                    command.Parameters.AddWithValue("@fechaHoraFin", c.FechaHoraFin);
+                    command.Parameters.AddWithValue("@estado", c.Estado);
+                    command.Parameters.AddWithValue("@comentarios", c.Comentarios ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@citaId", c.CitaId);
+
+                    await command.ExecuteNonQueryAsync();
+
+                    return c;
+
+
+                }
+            }
         }
     }
 }
